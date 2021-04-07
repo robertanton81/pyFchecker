@@ -1,87 +1,52 @@
 import os
 import json
 import pathlib
+import re
 
 
-def iterateDirectories(rpath):
+def iterateDirectories(rpath, sfn=''):
     reportlistpath = 'C:\\Users\\ranton\\Downloads\\2021-03-30\\2021-03-30\\processListSimple.txt'
     reportsDict = readReportRef(reportlistpath)
-
-    processes = {}
-    processed = {}
-
-    for root, dirs, files in os.walk(rpath, topdown=True):
-        procDir = root.split('\\')[-2]
-        # if procDir == 'Workforce Budgeting':
-        for file in files:
-            filePath = os.path.join(root, file)
-            fileExt = pathlib.Path(file).suffix
-            if fileExt == '.bs':
-                print(f'{procDir} - {file}')
-                reports = []
-                processes[file] = {'reports': reports, 'callsTo': {}}
-                processed[file] = []
-                for k, v in reportsDict.items():
-                    if file in v:
-                        reports.append(k)
-                with open(filePath, 'r') as fr:
-                    content = fr.readlines()
-                    for ln in [li.strip('\n\r\t') for li in content]:
-                        if ln.startswith('#include'):
-                            calledProcess = ln.split("\"")[1] + fileExt
-                            calls = findUsages(calledProcess, rpath, processed, file)
-                            # print(processed)
-                            processes[file]['callsTo'][calledProcess] = calls
-
-    with open(os.path.join('C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\', 'result.json'), 'w') as outFile:
-        json.dump(processes, outFile)
-
-# for folder in os.scandir(rpath):
-#     if folder.name not in ['DEPMWorkforceAddIn']:
-#         files = os.scandir(folder.path)
-#         for f in files:
-#             reports = []
-#             processes[f.name] = {'reports': reports, 'callsTo': {}}
-#             for k, v in reportsDict.items():
-#                 if f.name in v:
-#                     reports.append(k)
-#             with open(f.path, 'r') as fr:
-#                 content = fr.readlines()
-#                 for ln in [li.strip('\n\r\t') for li in content]:
-#                     if ln.startswith('#include'):
-#                         calledProcess = ln.split("\"")[1] + '.bs'
-#                         calls = findUsages(calledProcess, rpath)
-#                         processes[f.name]['callsTo'][calledProcess] = calls
-#
-# with open(os.path.join('C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\', 'result.json'), 'w') as outFile:
-#     json.dump(processes, outFile)
-
-
-def findUsages(procFile, rpath, processed, key):
-    usedprocesses = [procFile]
-    if procFile not in processed[key]:
-        processed[key].append(procFile)
-        # print(processed)
+    if sfn == '':
         for root, dirs, files in os.walk(rpath):
-            prev = ''
-            if prev != procFile:
+            procDir = root.split('\\')[-2]
+            if procDir == 'Workforce Budgeting':
                 for file in files:
-                    filePath = os.path.join(root, file)
                     fileExt = pathlib.Path(file).suffix
-                    if file == procFile and fileExt == '.bs':
-                        # if procFile in processed:
-                        #     print(f'****{procFile} -- {processed}')
-                        with open(filePath, 'r') as fr:
-                            content = fr.readlines()
-                            for ln in [li.strip('\n\r\t') for li in content]:
-                                if ln.startswith('#include'):
-                                    calledProcess = ln.split("\"")[1] + '.bs'
-                                    # processed.append(calledProcess)
-                                    # print(f'{procFile} ***** {calledProcess}')
-                                    usedprocesses.append(calledProcess)
-                                    findUsages(calledProcess, rpath, processed, key)
-    # print(processed)
-    return usedprocesses
+                    if fileExt == '.bs':
+                        reports = []
+                        calledin = []
+                        processed = []
+                        lookinreports(file, reports, reportsDict)
+                        lookforusages(calledin, file, processed, reports, rpath)
+    else:
+        reports = []
+        lookinreports(sfn, reports, reportsDict)
+        lookforusages([], sfn, [], reports, rpath)
+
+
+def lookinreports(file, reports, reportsDict):
+    for k, v in reportsDict.items():
+        if len(v) > 0:
+            strinlist = ','.join([str(el) for el in v])
+            if re.search(file, strinlist, re.IGNORECASE):
+                reports.append(k)
+
+
+def lookforusages(calledin, file, processed, reports, rpath):
+    for r, d, fls in os.walk(rpath):
+        for f in fls:
+            if f != file:
+                fExt = pathlib.Path(f).suffix
+                if f not in processed and fExt == '.bs':
+                    processed.append(f)
+                    fPath = os.path.join(r, f)
+                    with open(fPath, 'r', encoding='UTF-8') as fr:
+                        content = fr.readlines()
+                        for ln in [li.strip('\n\r\t') for li in content]:
+                            if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include',ln, re.IGNORECASE):
+                                calledin.append(f)
+    print(f'{file};{calledin};{reports}')
 
 
 def readReportRef(fpath):
@@ -155,4 +120,4 @@ def checkRemaining(rpath):
 if __name__ == '__main__':
     # checkRemaining(
     #     'C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\result.json')
-    iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\Projects\\AppEngine\\Sources\\Depm\\Processes\\')
+    iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\Projects\\AppEngine\\Sources\\Depm\\Processes\\', 'WB_GetPositionSliceXML.BS')
