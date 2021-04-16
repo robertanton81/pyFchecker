@@ -1,64 +1,6 @@
 import os
-import json
 import pathlib
 import re
-
-
-def iterateDirectories(rpath, sfn=[]):
-    print('folder;procName;in process;in reports')
-    reportlistpath = 'C:\\Farms\\2021-03-30\\2021-03-30\\processListSimple.txt'
-    reportsDict = readReportRef(reportlistpath)
-    if len(sfn) == 0:
-        for root, dirs, files in os.walk(rpath):
-            procDir = root.split('\\')[-2]
-            par = root.split('\\')[-1]
-            if procDir == 'Workforce Budgeting':
-                for file in files:
-                    fileExt = pathlib.Path(file).suffix
-                    if fileExt == '.bs':
-                        reports = []
-                        calledin = []
-                        processed = []
-                        lookinreports(file, reports, reportsDict)
-                        lookforusages(calledin, file, processed, reports, rpath, par)
-    else:
-        for ff in sfn:
-            reports = []
-            lookinreports(ff, reports, reportsDict)
-            lookforusages([], ff, [], reports, rpath, '-')
-
-
-def lookinreports(file, reports, reportsDict):
-    for k, v in reportsDict.items():
-        if len(v) > 0:
-            strinlist = ','.join([str(el) for el in v])
-            if re.search(file, strinlist, re.IGNORECASE):
-                reports.append(k)
-
-
-def lookforusages(calledin, file, processed, reports, rpath, procDir):
-    for r, d, fls in os.walk(rpath):
-        for f in fls:
-            if f != file:
-                fExt = pathlib.Path(f).suffix
-                if f not in processed and fExt == '.bs':
-                    processed.append(f)
-                    fPath = os.path.join(r, f)
-                    with open(fPath, 'r', encoding='UTF-8') as fr:
-                        content = fr.readlines()
-                        for ln in [li.strip('\n\r\t') for li in content]:
-                            if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include', ln,
-                                                                                              re.IGNORECASE):
-                                calledin.append(f)
-    inrepstr = ','.join([str(el) for el in reports])
-    inprocstr = ','.join([str(el) for el in calledin])
-    if len(inrepstr) == 0:
-        inrepstr = 'NOT FOUND'
-    if len(inprocstr) == 0:
-        inprocstr = 'NOT FOUND'
-
-
-    print(f'{procDir};{file};{inprocstr};{inrepstr}')
 
 
 def readReportRef(fpath):
@@ -76,7 +18,41 @@ def readReportRef(fpath):
         return repsDict
 
 
+def fromReportsToProcess(rpath, checkProcess):
+    dpath = 'C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\Workforce Budgeting\\'
+    reports = readReportRef(rpath)
+    found = {}
+    for key, value in reports.items():
+        processed = []
+        for v in value:
+            calls = [v]
+            if v not in processed:
+                lookforusages(v, dpath, calls, key)
+                processed.append(v)
+            if checkProcess in calls:
+                found[key] = calls
+
+
+def lookforusages(file, rpath, callst, report):
+    for r, d, fls in os.walk(rpath):
+        procDir = r.split('\\')[-2]
+        if procDir != 'DEPMWorkforceAddIn':
+            for f in fls:
+                if f != file:
+                    fExt = pathlib.Path(f).suffix
+                    if fExt == '.bs':
+                        fPath = os.path.join(r, f)
+                        with open(fPath, 'r', encoding='UTF-8') as fr:
+                            content = fr.readlines()
+                            for ln in [li.strip('\n\r\t') for li in content]:
+                                if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include', ln, re.IGNORECASE):
+                                    if f not in callst:
+                                        callst.append(f)
+                                        lookforusages(f, rpath, callst, report)
+
+
 if __name__ == '__main__':
     # checkRemaining(
     #     'C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\result.json')
-    iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\', ['WB_PctBCCalculatePercentBCs'])
+    # iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\', ['WB_CalculateAllActionsForEmployee.bs','WB_CalculateAllAssignmentsForEmployee.bs','WB_CalculateAllForOrg_Internal.bs','WB_CalculateFixedAmountBenefit.bs','WB_CalculatePremiumBenefit.bs','WB_CalculateSalaryAndDependenciesForEmployee.bs','WB_DeleteFixedAmountAction.bs','WB_DeletePremiumAction.bs','WB_PctBCActionCalculateAllAssigned.bs','WB_BCDefinitionDelete_Internal.bs','WB_PctBCActionDelete2.bs','WB_DeletePositionAssignment.bs','WB_ModifyAction.bs'])
+    fromReportsToProcess('C:\\Farms\\2021-03-30\\2021-03-30\\processListSimple.txt', 'WB_PctBCCalculatePercentBCs.bs')
