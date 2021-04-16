@@ -4,12 +4,14 @@ import pathlib
 import re
 
 
-def iterateDirectories(rpath, sfn=''):
-    reportlistpath = 'C:\\Users\\ranton\\Downloads\\2021-03-30\\2021-03-30\\processListSimple.txt'
+def iterateDirectories(rpath, sfn=[]):
+    print('folder;procName;in process;in reports')
+    reportlistpath = 'C:\\Farms\\2021-03-30\\2021-03-30\\processListSimple.txt'
     reportsDict = readReportRef(reportlistpath)
-    if sfn == '':
+    if len(sfn) == 0:
         for root, dirs, files in os.walk(rpath):
             procDir = root.split('\\')[-2]
+            par = root.split('\\')[-1]
             if procDir == 'Workforce Budgeting':
                 for file in files:
                     fileExt = pathlib.Path(file).suffix
@@ -18,11 +20,12 @@ def iterateDirectories(rpath, sfn=''):
                         calledin = []
                         processed = []
                         lookinreports(file, reports, reportsDict)
-                        lookforusages(calledin, file, processed, reports, rpath)
+                        lookforusages(calledin, file, processed, reports, rpath, par)
     else:
-        reports = []
-        lookinreports(sfn, reports, reportsDict)
-        lookforusages([], sfn, [], reports, rpath)
+        for ff in sfn:
+            reports = []
+            lookinreports(ff, reports, reportsDict)
+            lookforusages([], ff, [], reports, rpath, '-')
 
 
 def lookinreports(file, reports, reportsDict):
@@ -33,7 +36,7 @@ def lookinreports(file, reports, reportsDict):
                 reports.append(k)
 
 
-def lookforusages(calledin, file, processed, reports, rpath):
+def lookforusages(calledin, file, processed, reports, rpath, procDir):
     for r, d, fls in os.walk(rpath):
         for f in fls:
             if f != file:
@@ -44,9 +47,18 @@ def lookforusages(calledin, file, processed, reports, rpath):
                     with open(fPath, 'r', encoding='UTF-8') as fr:
                         content = fr.readlines()
                         for ln in [li.strip('\n\r\t') for li in content]:
-                            if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include',ln, re.IGNORECASE):
+                            if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include', ln,
+                                                                                              re.IGNORECASE):
                                 calledin.append(f)
-    print(f'{file};{calledin};{reports}')
+    inrepstr = ','.join([str(el) for el in reports])
+    inprocstr = ','.join([str(el) for el in calledin])
+    if len(inrepstr) == 0:
+        inrepstr = 'NOT FOUND'
+    if len(inprocstr) == 0:
+        inprocstr = 'NOT FOUND'
+
+
+    print(f'{procDir};{file};{inprocstr};{inrepstr}')
 
 
 def readReportRef(fpath):
@@ -64,60 +76,7 @@ def readReportRef(fpath):
         return repsDict
 
 
-def checkObsolete(rpath):
-    obsolete = []
-    with open(rpath) as fr:
-        data = json.load(fr)
-        for checkedProcess, checkedProcData in data.items():
-            isUsed = False
-            if len(checkedProcData['reports']) > 0:
-                isUsed = True
-            if not isUsed:
-                for key, value in data.items():
-                    if checkedProcess != key:
-                        if checkedProcess in value['callsTo']:
-                            isUsed = True
-            if not isUsed:
-                obsolete.append(checkedProcess)
-
-    for o in obsolete:
-        print(o)
-
-
-def checkRemaining(rpath):
-    obsolete = []
-    usedReports = []
-    usedProcesesses = []
-    with open(rpath) as fr:
-        data = json.load(fr)
-        for checkedProcess, checkedProcData in data.items():
-            isUsed = False
-            if len(checkedProcData['reports']) > 0:
-                isUsed = True
-                usedReports.append(f'{checkedProcess}; {checkedProcData["reports"]}')
-            if not isUsed:
-                for key, value in data.items():
-                    if checkedProcess != key:
-                        if checkedProcess in value['callsTo']:
-                            isUsed = True
-                            usedProcesesses.append(f'{checkedProcess};{key}')
-            if not isUsed:
-                obsolete.append(checkedProcess)
-
-    print('obsolete')
-    for o in obsolete:
-        print(o)
-
-    print('inReports')
-    for u in usedReports:
-        print(f'{u}')
-
-    print('inProcess')
-    for up in usedProcesesses:
-        print(up)
-
-
 if __name__ == '__main__':
     # checkRemaining(
     #     'C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\result.json')
-    iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-2403\\Projects\\AppEngine\\Sources\\Depm\\Processes\\', 'WB_GetPositionSliceXML.BS')
+    iterateDirectories('C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\', ['WB_PctBCCalculatePercentBCs'])
