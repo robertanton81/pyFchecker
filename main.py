@@ -19,26 +19,27 @@ def readReportRef(fpath):
 
 
 def fromReportsToProcess(rpath, checkProcess):
-    dpath = 'C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\Workforce Budgeting\\'
+    dpath = 'C:\\Farms\\DEPM-35267-WFB-Perf-Model-1204\\Projects\\AppEngine\\Sources\\Depm\\Processes\\'
     reports = readReportRef(rpath)
     found = {}
     for key, value in reports.items():
         processed = []
         for v in value:
-            calls = [v]
             if v not in processed:
-                lookforusages(v, dpath, calls, key)
+                calls = [v]
+                localProcessed = [v]
+                lookforusages(v, dpath, calls, key, localProcessed)
                 processed.append(v)
-            if checkProcess in calls:
-                found[key] = calls
+                print(f'report: {key}, process: {v} callstack: {calls}')
 
 
-def lookforusages(file, rpath, callst, report):
+def lookforusages(file, rpath, callst, report, processed):
     for r, d, fls in os.walk(rpath):
         procDir = r.split('\\')[-2]
         if procDir != 'DEPMWorkforceAddIn':
             for f in fls:
-                if f != file:
+                if f != file and f not in processed:
+                    processed.append(f)
                     fExt = pathlib.Path(f).suffix
                     if fExt == '.bs':
                         fPath = os.path.join(r, f)
@@ -48,7 +49,7 @@ def lookforusages(file, rpath, callst, report):
                                 if re.search(file.split('.')[0], ln, re.IGNORECASE) and re.search('#include', ln, re.IGNORECASE):
                                     if f not in callst:
                                         callst.append(f)
-                                        lookforusages(f, rpath, callst, report)
+                                        lookforusages(f, rpath, callst, report, processed)
 
 
 if __name__ == '__main__':
