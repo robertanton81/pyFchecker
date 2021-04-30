@@ -48,7 +48,7 @@ def processAll(file):
             stack = []
             pprint_tree_v(n, r, stack)
             if file in stack:
-                pprint_tree(n, r)
+                pprint_tree(n, r, file)
 
 
 def pprint_tree_v(node, r, stack, file=None, _prefix="", _last=True):
@@ -61,13 +61,13 @@ def pprint_tree_v(node, r, stack, file=None, _prefix="", _last=True):
         pprint_tree_v(child, r, stack, file, _prefix, _last)
 
 
-def pprint_tree(node, r, file=None, _prefix="", _last=True):
-    print(r.key, _prefix, "`- " if _last else "|- ", node.key, sep="", file=file)
+def pprint_tree(node, r, f, file=None, _prefix="", _last=True):
+    print(r.key, _prefix, "`- " if _last else "|- ", "\u0332".join(node.key) if f == node.key else node.key, sep="", file=file)
     _prefix += "   " if _last else "|  "
     child_count = len(node.calling)
     for i, child in enumerate(node.calling):
         _last = i == (child_count - 1)
-        pprint_tree(child, r, file, _prefix, _last)
+        pprint_tree(child, r, f, file, _prefix, _last)
 
 
 def setReports():
