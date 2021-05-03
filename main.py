@@ -43,12 +43,33 @@ def processAll(file):
                 pprint_tree(n, r, file)
 
 
+def processAllReverse(file):
+    setNodes()
+    setReports()
+    for n in globalProcessNodes:
+        if n.key == file:
+            pprint_reverseTree(n)
+
+
 def populateStack(node, r, stack, file=None, _prefix="", _last=True):
     child_count = len(node.calling)
     for i, child in enumerate(node.calling):
         _last = i == (child_count - 1)
         stack.insert(0, child.key)
         populateStack(child, r, stack, file, _prefix, _last)
+
+
+def pprint_reverseTree(node, file=None, _prefix="", _last=True):
+    print(_prefix, "`- " if _last else "|- ", node.key, sep="", file=file)
+    _prefix += "   " if _last else "|  "
+    child_count = 0
+    if not isinstance(node, Report):
+        child_count = len(node.callers)
+        for i, child in enumerate(node.callers):
+            _last = i == (child_count - 1)
+            pprint_reverseTree(child, file, _prefix, _last)
+    else:
+        pass
 
 
 def pprint_tree(node, r, f, file=None, _prefix="", _last=True):
@@ -126,4 +147,5 @@ def readReportRef():
 
 
 if __name__ == '__main__':
-    processAll('WB_ComputeAnnualFTE.bs')
+    # processAll('WB_ComputeAnnualFTE.bs')
+    processAllReverse('WB_ComputeAnnualFTE.bs')
